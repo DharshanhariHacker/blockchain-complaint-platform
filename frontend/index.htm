@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complaint Platform</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Complaint Submission</h1>
+    <textarea id="encryptedData" placeholder="Enter encrypted complaint data..."></textarea>
+    <button onclick="submitComplaint()">Submit Complaint</button>
+    
+    <h2>Get Complaint Status</h2>
+    <input type="number" id="complaintId" placeholder="Enter Complaint ID" />
+    <button onclick="getComplaint()">Get Status</button>
+    
+    <div id="result"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
