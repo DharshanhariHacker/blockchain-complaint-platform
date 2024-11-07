@@ -1,50 +1,85 @@
-from flask import Flask, request, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 from web3 import Web3
-import os
 from dotenv import load_dotenv
-import json
+import os
 
 load_dotenv()
 
 app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'your_secret_key')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+db = SQLAlchemy(app)
 
-# Connect to Ganache
-w3 = Web3(Web3.HTTPProvider(os.getenv('GANACHE_RPC_URL', 'http://127.0.0.1:7545')))
+# Connect to your local blockchain (Ganache)
+blockchain_url = "http://127.0.0.1:7545"
+web3 = Web3(Web3.HTTPProvider(blockchain_url))
 
-# Load contract ABI and address
-with open('contracts/ComplaintPlatform.json') as f:
-    contract_data = json.load(f)
+# Import models
+from models import User, Complaint
 
-if 'networks' not in contract_data or '5777' not in contract_data['networks']:
-    raise ValueError("Contract address for Ganache network not found.")
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-contract_address = contract_data['networks']['5777']['address']  # Ganache network ID
-abi = contract_data['abi']
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        wallet_address = request.form['wallet_address']
+        hashed_password = generate_password_hash(password)
 
-contract = w3.eth.contract(address=contract_address, abi=abi)
+        new_user = User(email=email, password_hash=hashed_password, wallet_address=wallet_address)
+        db.session.add(new_user)
+        db.session.commit()
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+        user = User.query.filter_by(email=email).first()
+        
+        if user and check_password_hash(user.password_hash, password):
+            session['user_id'] = user.id
+            return redirect(url_for('dashboard'))
+
+    return render_template('login.html')
+
+@app.route('/dashboard')
+def dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    user = User.query.get(session['user_id'])
+    complaints = Complaint.query.filter_by(user_id=user.id).all()
+    return render_template('dashboard.html', user=user, complaints=complaints)
 
 @app.route('/submit_complaint', methods=['POST'])
 def submit_complaint():
-    encrypted_data = request.json.get('encrypted_data')
-    account = w3.eth.accounts[0]  # Use the first account from Ganache
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    complaint_data = request.form['complaint']
+    new_complaint = Complaint(user_id=session['user_id'], complaint_data=complaint_data)
+    db.session.add(new_complaint)
+    db.session.commit()
 
-    try:
-        tx_hash = contract.functions.submitComplaint(encrypted_data).transact({'from': account})
-        w3.eth.wait_for_transaction_receipt(tx_hash)
-        return jsonify({"status": "Complaint submitted successfully!", "transaction_hash": tx_hash.hex()})
-    except Exception as e:
-        return jsonify({"status": "Error submitting complaint", "error": str(e)}), 400
+    return redirect(url_for('dashboard'))
 
-@app.route('/get_complaint/<int:complaint_id>', methods=['GET'])
-def get_complaint(complaint_id):
-    try:
-        encrypted_data, status = contract.functions.getComplaint(complaint_id).call()
-        return jsonify({
-            "encrypted_data": encrypted_data,
-            "status": status
-        })
-    except Exception as e:
-        return jsonify({"status": "Error retrieving complaint", "error": str(e)}), 400
+@app.route('/admin/dashboard')
+def admin_dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    complaints = Complaint.query.all()
+    return render_template('admin_dashboard.html', complaints=complaints)
 
 if __name__ == '__main__':
+    db.create_all()  # Create database tables
     app.run(debug=True)

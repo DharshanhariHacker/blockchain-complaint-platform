@@ -1,5 +1,5 @@
-const Web3 = require("web3");
-const ComplaintPlatform = artifacts.require("ComplaintPlatform");
+var Web3 = require("web3");
+var ComplaintPlatform = artifacts.require("ComplaintPlatform");
 
 module.exports = async function (deployer) {
     await deployer.deploy(ComplaintPlatform);

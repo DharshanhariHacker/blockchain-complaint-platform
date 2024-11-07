@@ -1,26 +1,31 @@
 const HDWalletProvider = require('@truffle/hdwallet-provider');
-const Web3 = require('web3');
 const dotenv = require('dotenv');
+const path = require('path');
 
-dotenv.config();
+// Load .env from backend folder
+dotenv.config({ path: path.resolve(__dirname, 'backend/.env') });
 
 const mnemonic = process.env.MNEMONIC;
 
+if (!mnemonic) {
+  throw new Error("Mnemonic is not defined in the .env file");
+}
+
 module.exports = {
-    networks: {
-        development: {
-            host: "127.0.0.1", // Use localhost
-            port: 7545,        // Ganache GUI port
-            network_id: "*",   // Any network (default: none)
+  networks: {
+    development: {
+      provider: () => new HDWalletProvider({
+        mnemonic: {
+          phrase: mnemonic
         },
-        ganache: {
-            provider: () => new HDWalletProvider(mnemonic, `http://127.0.0.1:7545`),
-            network_id: "*", // Match any network id
-        },
+        providerOrUrl: "http://127.0.0.1:7545", // Local Ganache URL
+      }),
+      network_id: "*", // Match any network id
     },
-    compilers: {
-        solc: {
-            version: "0.8.27", // Specify the solc version
-        },
-    },
+  },
+  compilers: {
+    solc: {
+      version: "0.8.19", // Specify solc version
+    }
+  },
 };
