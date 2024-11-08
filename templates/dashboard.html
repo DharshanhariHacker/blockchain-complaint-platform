@@ -1,0 +1,15 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Dashboard</title>
+</head>
+<body>
+    <h1>Dashboard</h1>
+    <form action="/file_complaint" method="post">
+        <textarea name="description" placeholder="Complaint Description"></textarea>
+        <input type="text" name="image_hash" placeholder="Image IPFS Hash">
+        <button type="submit">File Complaint</button>
+    </form>
+</body>
+</html>
